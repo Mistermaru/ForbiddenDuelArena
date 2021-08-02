@@ -1,19 +1,19 @@
-package com.example;
+package com.forbiddenduelarena;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("example")
-public interface ExampleConfig extends Config
+public interface FDAConfig extends Config
 {
 	@ConfigItem(
-		keyName = "greeting",
-		name = "Welcome Greeting",
-		description = "The message to show to the user when they login"
+		keyName = "FDA",
+		name = "Forbidden Duel Arena",
+		description = "Don't go staking today!"
 	)
 	default String greeting()
 	{
-		return "Hello";
+		return "Stop staking!";
 	}
 }
