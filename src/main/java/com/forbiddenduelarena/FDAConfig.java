@@ -4,16 +4,17 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup("example")
+@ConfigGroup("forbiddenduelarena")
 public interface FDAConfig extends Config
 {
 	@ConfigItem(
-		keyName = "FDA",
-		name = "Forbidden Duel Arena",
-		description = "Don't go staking today!"
+			position = 1,
+			keyName = "FDA",
+			name = "Forbidden Duel Arena",
+			description = "Stop staking. Turn this option on!"
 	)
-	default String greeting()
+	default boolean TurnOnFDA()
 	{
-		return "Stop staking!";
+		return true;
 	}
 }
