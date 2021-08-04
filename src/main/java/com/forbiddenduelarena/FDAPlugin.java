@@ -2,13 +2,11 @@ package com.forbiddenduelarena;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Random;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.WorldType;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.WorldChanged;
+import net.runelite.api.*;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -23,9 +21,6 @@ import net.runelite.client.util.WorldUtil;
 import net.runelite.http.api.worlds.WorldResult;
 import net.runelite.http.api.worlds.World;
 import net.runelite.client.game.WorldService;
-import net.runelite.client.plugins.screenmarkers.ui.ScreenMarkerPluginPanel;
-import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
-import net.runelite.client.ui.overlay.OverlayManager;
 
 @Slf4j
 @PluginDescriptor(
@@ -40,6 +35,8 @@ public class FDAPlugin extends Plugin
 	private World world;
 	private boolean worldTypeCheck;
 	private net.runelite.api.World rsWorld;
+	private AntiStakeQuoteManager antiStakeQuoteManager;
+	private Random rand;
 
 	@Inject
 	private WorldService worldService;
@@ -53,10 +50,13 @@ public class FDAPlugin extends Plugin
 	@Inject
 	private ChatMessageManager chatMessageManager;
 
+
 	@Override
 	protected void startUp() throws Exception
 	{
 		log.info("FDA started!");
+		antiStakeQuoteManager = new AntiStakeQuoteManager();
+		rand = new Random();
 		loadWorld();
 	}
 
@@ -64,20 +64,6 @@ public class FDAPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		log.info("FDA stopped!");
-	}
-
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged)
-	{
-
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
-		{
-			// client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Yolo Swag " + config.TurnOnFDA(), null);
-
-
-			checkIfPlayerInDuelArena();
-		}
-
 	}
 
 	@Subscribe
@@ -93,34 +79,40 @@ public class FDAPlugin extends Plugin
 		if (worldNumber == 302)
 		{
 			playerPoint = client.getLocalPlayer().getWorldLocation();
-			log.info("Player location: " + playerPoint);
 
 			if (playerPoint.getX() >= 3312 && playerPoint.getX() <= 3400 && playerPoint.getY() >= 3201 && playerPoint.getY() <= 3286)
 			{
 				log.info("This player is about to stake...");
 				client.hopToWorld(rsWorld);
-
+				showAntiStakeQuote();
 			}
 		}
 	}
 
 	public void loadWorld()
 	{
+		worldResult = worldService.getWorlds();
+		ArrayList<Integer> worldList = new ArrayList<Integer>();
+		for (World w : worldResult.getWorlds())
+		{
+			worldList.add(w.getId());
+		}
+		Collections.shuffle(worldList);
+		worldToHopTo = worldList.get(0);
 		worldTypeCheck = true;
+
 		WorldType[] bannedWorldTypes = {WorldType.PVP, WorldType.HIGH_RISK, WorldType.DEADMAN_TOURNAMENT, WorldType.BOUNTY, WorldType.DEADMAN, WorldType.SKILL_TOTAL, WorldType.TOURNAMENT, WorldType.LEAGUE};
-		worldToHopTo = 548;
 		while (worldTypeCheck)
 		{
-			worldResult = worldService.getWorlds();
 			world = worldResult.findWorld(worldToHopTo);
-			for (WorldType worldTypeElement : bannedWorldTypes)
+			for (WorldType bannedWorldType : bannedWorldTypes)
 			{
-				log.info("WorldType: " + worldTypeElement);
-				if (world == null || WorldUtil.toWorldTypes(world.getTypes()).contains(worldTypeElement))
+				log.info("World and World Type:" + world.getId() + " || " + WorldUtil.toWorldTypes(world.getTypes()));
+				if (world == null || WorldUtil.toWorldTypes(world.getTypes()).contains(bannedWorldType) || !WorldUtil.toWorldTypes(world.getTypes()).contains(WorldType.MEMBERS))
 				{
-					worldToHopTo = worldToHopTo + 1;
+					Collections.shuffle(worldList);
+					worldToHopTo = worldList.get(0);
 					world = worldResult.findWorld(worldToHopTo);
-					log.info("WorldNumber: " + worldToHopTo);
 				}
 				else
 				{
@@ -137,7 +129,19 @@ public class FDAPlugin extends Plugin
 		rsWorld.setTypes(WorldUtil.toWorldTypes(world.getTypes()));
 	}
 
-
+	public void showAntiStakeQuote()
+	{
+		String chatMsg = antiStakeQuoteManager.getRandomQuote();
+		final String message = new ChatMessageBuilder()
+				.append(ChatColorType.HIGHLIGHT)
+				.append(chatMsg)
+				.build();
+		chatMessageManager.queue(
+				QueuedMessage.builder()
+						.type(ChatMessageType.CONSOLE)
+						.runeLiteFormattedMessage(message)
+						.build());
+	}
 
 	@Provides
 	FDAConfig provideConfig(ConfigManager configManager)
